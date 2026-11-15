@@ -136,3 +136,17 @@ describe("errors", () => {
     expect(parseDeck("").errors).toHaveLength(1);
   });
 });
+
+describe("cardFaces", () => {
+  it("builds front and back markdown for each card type", async () => {
+    const { cardFaces } = await import("./faces");
+    const [basic, mcq, tf] = parseDeck(sample("cloud-computing.md")).deck.cards.map(cardFaces);
+    expect(basic).toEqual({
+      front: "What does IDaaS provide?",
+      back: "Authentication services managed by a third party: SSO, MFA, IGA.",
+    });
+    expect(mcq.front).toBe("Which tier of the container architecture stores images?\n\n- Tier 2\n- Tier 3\n- Tier 4");
+    expect(mcq.back).toBe("**Tier 3**\n\nRegistries store images and send them to orchestrators.");
+    expect(tf.back).toBe("**False**\n\nContainers do not need an independent OS.");
+  });
+});
