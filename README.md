@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flipmark
 
-## Getting Started
+Turn Markdown notes into 3D flip flashcards and quizzes. Everything runs in your browser: there is no backend, no account and no database.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Upload or paste** one or many `.md` files, with a preview of how many cards were found and which ones have errors.
+- **Study mode**: 3D flip cards, shuffle, a progress bar, "Got it / Review again", and a round of only the cards you missed.
+- **Quiz mode**: multiple choice and true/false with instant feedback, typed answers for basic cards, and a final score.
+- **Search** across deck titles, subjects and the text of every card.
+- **Export all decks / Import backup** as a JSON file, including your progress.
+- A daily study streak, dark mode (follows your system setting) and reduced-motion support.
+
+> **Your data stays on your device.** Decks are saved in IndexedDB and progress in `localStorage`. Clearing site data deletes them, so use **Export all decks** to keep a backup.
+
+## Controls
+
+| Action        | Mouse / touch        | Keyboard        |
+| ------------- | -------------------- | --------------- |
+| Flip the card | Click or tap         | Space, or Enter |
+| Next card     | Swipe left, or Skip  | Right arrow     |
+| Previous card | Swipe right          | Left arrow      |
+
+## Deck format
+
+One `.md` file is one deck. Frontmatter holds the metadata, each card starts with a `## Q:` heading, and cards are separated by a line containing only `---`.
+
+```md
+---
+title: IT2511 Cloud Computing
+subject: Cybersecurity
+---
+
+## Q: What does IDaaS provide?
+A: Authentication services managed by a third party: SSO, MFA, IGA.
+
+---
+
+## Q: Which tier of the container architecture stores images?
+type: mcq
+- Tier 2
+- [x] Tier 3
+- Tier 4
+explain: Registries store images and send them to orchestrators.
+
+---
+
+## Q: Containers need their own OS like VMs.
+type: tf
+A: false
+explain: Containers do not need an independent OS.
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Rules:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `type` defaults to `basic`, which needs `A:`.
+- `mcq` needs at least 2 options and exactly one marked `[x]`.
+- `tf` needs `A: true` or `A: false`.
+- `explain:` is optional on every type.
+- Answers and explanations may span several lines and contain Markdown (bold, bullets, tables, code). A field runs until the next field line or the `---` separator.
+- `title` falls back to the filename when it is missing. `subject` is optional.
+- Field names are case-sensitive: `A:`, `type:` and `explain:`.
+- A title that contains a colon must be quoted: `title: "Chapter 1: Intro"`.
+- Uploading a deck with the same title as a saved one replaces it and keeps its progress.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+More examples are in [content/decks](content/decks).
 
-## Learn More
+## Generate a deck with AI
 
-To learn more about Next.js, take a look at the following resources:
+Copy the prompt in [content/deck-prompt.md](content/deck-prompt.md) (or press **Copy AI deck prompt** in the app), paste it into any AI chat, add your notes at the end, and paste the result into Flipmark.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm test           # parser and backup unit tests (Vitest)
+npm run test:e2e   # end-to-end smoke test (Playwright; first run: npx playwright install chromium)
+npm run build
+```
 
-## Deploy on Vercel
+Project layout:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+content/decks/*.md         sample decks, loaded at build time
+content/deck-prompt.md     the AI deck-generator prompt
+src/app/                   library page, /deck/[id] (study), /deck/[id]/quiz
+src/components/            Flashcard, Uploader, UploadPreview, DeckGrid, Study, Quiz
+src/lib/markdown/          parser: markdown string -> { deck, errors }
+src/lib/storage/           IndexedDB and JSON backup
+src/lib/progress.ts        study progress (Zustand, persisted to localStorage)
+e2e/                       Playwright smoke test
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deployment
+
+Push to GitHub and import the repository into Vercel. Next.js is detected automatically and no environment variables are needed.

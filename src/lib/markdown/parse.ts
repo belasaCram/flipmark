@@ -96,10 +96,12 @@ export function parseDeck(md: string, filename?: string): { deck: Deck; errors: 
 
   const title = typeof data.title === "string" || typeof data.title === "number" ? String(data.title).trim() : "";
   const subject = typeof data.subject === "string" ? data.subject.trim() : "";
+  const deckTitle = title || filename?.replace(/\.md$/i, "") || "Untitled deck";
   return {
     deck: {
-      id: crypto.randomUUID(),
-      title: title || filename?.replace(/\.md$/i, "") || "Untitled deck",
+      // Derived from the title, so re-uploading an edited deck replaces it and keeps its progress.
+      id: deckTitle.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "deck",
+      title: deckTitle,
       ...(subject && { subject }),
       cards,
       createdAt: Date.now(),
