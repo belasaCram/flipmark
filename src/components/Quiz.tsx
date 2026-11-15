@@ -10,12 +10,67 @@ import { DeckPage } from "./DeckPage";
 import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { ProgressBar } from "./ProgressBar";
-import { btn, btnPrimary, field, kbd, muted, panel } from "./ui";
+import { btn, btnPrimary, field, kbd, muted, panel, plural } from "./ui";
 
 export function Quiz() {
+  return <DeckPage mode="quiz">{(deck) => <QuizSetup deck={deck} />}</DeckPage>;
+}
+
+const KINDS: [Card["type"], string, string][] = [
+  ["basic", "Identification", "Type the answer from memory"],
+  ["mcq", "Multiple choice", "Pick one option"],
+  ["tf", "True or false", "Judge the statement"],
+  ["enum", "Enumeration", "List every item"],
+];
+
+/** Lets the user choose which question types to be quizzed on. Skipped when the deck has only one type. */
+function QuizSetup({ deck }: { deck: Deck }) {
+  const kinds = KINDS.map(([type, ...rest]) => [type, deck.cards.filter((c) => c.type === type).length, ...rest] as const).filter(
+    ([, count]) => count,
+  );
+  const [off, setOff] = useState<Card["type"][]>([]);
   const [attempt, setAttempt] = useState(0);
+  const [started, setStarted] = useState(kinds.length < 2);
+  const cards = deck.cards.filter((c) => !off.includes(c.type));
+
+  if (started) {
+    const retry = () => (kinds.length < 2 ? setAttempt(attempt + 1) : setStarted(false));
+    return <QuizRun key={attempt} deck={{ ...deck, cards }} onRetry={retry} />;
+  }
   return (
-    <DeckPage mode="quiz">{(deck) => <QuizRun key={attempt} deck={deck} onRetry={() => setAttempt((n) => n + 1)} />}</DeckPage>
+    <form
+      className={`${panel} flex flex-col gap-4`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        setAttempt(attempt + 1);
+        setStarted(true);
+      }}
+    >
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-3 text-lg font-semibold">Choose question types</legend>
+        {kinds.map(([type, count, label, hint]) => (
+          <label
+            key={type}
+            className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-border px-4 py-2 has-checked:border-primary has-checked:bg-primary-soft"
+          >
+            <input
+              type="checkbox"
+              className="size-4 accent-primary"
+              checked={!off.includes(type)}
+              onChange={() => setOff(off.includes(type) ? off.filter((t) => t !== type) : [...off, type])}
+            />
+            <span className="flex-1">
+              <span className="block font-medium">{label}</span>
+              <span className={muted}>{hint}</span>
+            </span>
+            <span className={`${muted} tabular-nums`}>{count}</span>
+          </label>
+        ))}
+      </fieldset>
+      <button className={`${btnPrimary} self-start`} disabled={!cards.length}>
+        Start quiz ({plural(cards.length, "question")})
+      </button>
+    </form>
   );
 }
 
@@ -23,7 +78,13 @@ export function Quiz() {
 const normalize = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
 const correctAnswer = (card: Card) =>
-  card.type === "mcq" ? (card.options.find((o) => o.correct)?.text ?? "") : card.type === "tf" ? (card.a ? "True" : "False") : card.a;
+  card.type === "mcq"
+    ? (card.options.find((o) => o.correct)?.text ?? "")
+    : card.type === "tf"
+      ? (card.a ? "True" : "False")
+      : card.type === "enum"
+        ? card.items.join(", ")
+        : card.a;
 
 function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
   const [cards] = useState(() => shuffle(deck.cards));
@@ -39,6 +100,10 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
   const total = cards.length;
   const card: Card | undefined = cards[i];
   const options = card?.type === "mcq" ? card.options.map((o) => o.text) : card?.type === "tf" ? ["True", "False"] : [];
+  // ponytail: enumeration entries are split on new lines, commas and semicolons, so an item that itself
+  // contains a comma never auto-matches and falls back to self-grading.
+  const entries = typed.split(/[\n,;]+/).map(normalize);
+  const listed = (item: string) => entries.includes(normalize(item));
 
   // Number keys pick an option while the question is unanswered.
   useHotkeys(Object.fromEntries(options.map((option, n) => [String(n + 1), result === null ? () => pick(option) : undefined])));
@@ -106,18 +171,18 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
         <Markdown>{card.q}</Markdown>
       </div>
 
-      {card.type === "basic" ? (
+      {card.type === "basic" || card.type === "enum" ? (
         <form
           className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
             setPicked(typed);
-            if (normalize(typed) === normalize(card.a)) grade(true);
+            if (card.type === "enum" ? card.items.every(listed) : normalize(typed) === normalize(card.a)) grade(true);
             else setResult("self");
           }}
         >
           <label htmlFor="answer" className="text-sm font-medium">
-            Type your answer from memory
+            {card.type === "enum" ? `List all ${card.items.length} items, one per line` : "Type your answer from memory"}
           </label>
           <textarea
             id="answer"
@@ -160,7 +225,19 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
                 {result ? "Correct!" : "Not quite."}
               </p>
             )}
-            <Markdown>{`**Answer:** ${card.type === "basic" ? `\n\n${card.a}` : correctAnswer(card)}`}</Markdown>
+            {card.type === "enum" ? (
+              <ul className="flex flex-col gap-1">
+                {card.items.map((item) => (
+                  <li key={item} className={`flex items-center gap-2 ${listed(item) ? "text-success" : "text-danger"}`}>
+                    <Icon name={listed(item) ? "check" : "x"} className="size-4 shrink-0" />
+                    <span className="sr-only">{listed(item) ? "Listed:" : "Missed:"}</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Markdown>{`**Answer:** ${card.type === "basic" ? `\n\n${card.a}` : correctAnswer(card)}`}</Markdown>
+            )}
             {card.explain && (
               <div className={muted}>
                 <Markdown>{card.explain}</Markdown>

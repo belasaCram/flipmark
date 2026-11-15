@@ -48,7 +48,7 @@ describe("sample decks", () => {
 
   it("keeps multi-line markdown, and --- inside a code fence stays in the card", () => {
     const { deck } = parseDeck(sample("flipmark-format.md"));
-    expect(deck.cards).toHaveLength(9);
+    expect(deck.cards).toHaveLength(10);
     const [, , table, fenced] = deck.cards;
     expect(table).toMatchObject({ type: "basic" });
     expect((table as { a: string }).a).toMatch(/^\| Type .*\n\| -+ .*\n(.*\n){2}.*`tf`/);
@@ -111,6 +111,25 @@ describe("leniency", () => {
   });
 });
 
+describe("enum cards", () => {
+  it("reads the bullets as items, before or after A:", () => {
+    const { deck, errors } = parseDeck(
+      deckOf("## Q: Name the primary colours.\ntype: enum\n- Red\n- Yellow\n- Blue\nexplain: RYB", "## Q: two?\ntype: enum\nA:\n- a\n- b"),
+    );
+    expect(errors).toEqual([]);
+    expect(deck.cards).toEqual([
+      { id: "c1", type: "enum", q: "Name the primary colours.", items: ["Red", "Yellow", "Blue"], explain: "RYB" },
+      { id: "c2", type: "enum", q: "two?", items: ["a", "b"] },
+    ]);
+  });
+
+  it("lists the items on the back of the flashcard", async () => {
+    const { cardFaces } = await import("./faces");
+    const { deck } = parseDeck("## Q: two?\ntype: enum\n- a\n- b\nexplain: why");
+    expect(cardFaces(deck.cards[0])).toEqual({ front: "two?", back: "- a\n- b\n\nwhy" });
+  });
+});
+
 describe("errors", () => {
   it("names the card number and line, and keeps the valid cards", () => {
     const { deck, errors } = parseDeck(
@@ -132,7 +151,8 @@ describe("errors", () => {
     ["## Q: no answer\ntype: tf", "tf needs A: true or A: false"],
     ["## Q: no answer", "basic needs an A: answer"],
     ["## Q:\nA: no question", "missing question text after ## Q:"],
-    ["## Q: odd\ntype: cloze\nA: x", 'unknown type "cloze" (use basic, mcq, or tf)'],
+    ["## Q: odd\ntype: cloze\nA: x", 'unknown type "cloze" (use basic, mcq, tf, or enum)'],
+    ["## Q: one item\ntype: enum\n- a", "enum needs at least 2 items"],
     ["Some stray notes", 'expected a "## Q:" heading'],
   ])("%j -> %s", (card, message) => {
     const { deck, errors } = parseDeck(deckOf(card));

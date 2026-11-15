@@ -9,5 +9,6 @@ export function cardFaces(card: Card): { front: string; back: string } {
       back: `**${card.options.find((o) => o.correct)?.text ?? ""}**${explain}`,
     };
   }
+  if (card.type === "enum") return { front: card.q, back: card.items.map((item) => `- ${item}`).join("\n") + explain };
   return { front: card.q, back: (card.type === "tf" ? `**${card.a ? "True" : "False"}**` : card.a) + explain };
 }

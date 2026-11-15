@@ -6,7 +6,7 @@ Turn Markdown notes into 3D flip flashcards and quizzes. Everything runs in your
 
 - **Upload or paste** one or many `.md` files, with a preview of how many cards were found and which ones have errors.
 - **Study mode**: 3D flip cards, shuffle, a progress bar, "Got it / Review again", and a round of only the cards you missed.
-- **Quiz mode**: multiple choice and true/false with instant feedback, typed answers for basic cards, and a final score.
+- **Quiz mode**: choose the question types to include (Identification, Multiple choice, True or false, Enumeration), get instant feedback, and see a final score.
 - **Search** across deck titles, subjects and the text of every card.
 - **Export all decks / Import backup** as a JSON file, including your progress.
 - A daily study streak, light and dark themes (follows your system setting, with a toggle in the header) and reduced-motion support.
@@ -51,6 +51,14 @@ explain: Registries store images and send them to orchestrators.
 type: tf
 A: false
 explain: Containers do not need an independent OS.
+
+---
+
+## Q: Name the three cloud service models.
+type: enum
+- IaaS
+- PaaS
+- SaaS
 ```
 
 Rules:
@@ -58,6 +66,7 @@ Rules:
 - `type` defaults to `basic`, which needs `A:`.
 - `mcq` needs at least 2 options and exactly one marked `[x]`.
 - `tf` needs `A: true` or `A: false`.
+- `enum` (enumeration) needs at least 2 bullet items. In the quiz you list them from memory, one per line, in any order.
 - `explain:` is optional on every type.
 - Answers and explanations may span several lines and contain Markdown (bold, bullets, tables, code). A field runs until the next field line or the `---` separator.
 - `title` falls back to the filename when it is missing. `subject` is optional.

@@ -16,6 +16,11 @@ export const cardSchema = z.discriminatedUnion("type", [
       .min(2, "mcq needs at least 2 options")
       .refine((o) => o.filter((x) => x.correct).length === 1, "mcq needs exactly one [x] option"),
   }),
+  z.object({
+    ...base,
+    type: z.literal("enum"),
+    items: z.array(z.string().min(1, "enum item is empty")).min(2, "enum needs at least 2 items"),
+  }),
   z.object({ ...base, type: z.literal("tf"), a: z.boolean({ error: "tf needs A: true or A: false" }) }),
 ]);
 

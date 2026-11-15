@@ -14,13 +14,14 @@ explain: The same marker also wraps the frontmatter at the top of the file.
 
 ---
 
-## Q: What are the three card types?
+## Q: What are the four card types?
 A:
 | Type    | Needs                                |
 | ------- | ------------------------------------ |
 | `basic` | `A:` answer                          |
 | `mcq`   | 2+ options, exactly one `[x]`        |
 | `tf`    | `A: true` or `A: false`              |
+| `enum`  | 2+ bullet items to list from memory  |
 
 ---
 
@@ -75,3 +76,13 @@ A: In your browser only (IndexedDB). They never leave the device.
 explain: Use **Export all decks** to back them up:
 - there is no database
 - clearing browser data deletes them
+
+---
+
+## Q: Name the four card types.
+type: enum
+- basic
+- mcq
+- tf
+- enum
+explain: In quiz mode these appear as Identification, Multiple choice, True or false, and Enumeration.

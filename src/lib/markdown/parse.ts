@@ -7,7 +7,7 @@ const HEADING = /^##\s*Q:\s*(.*)$/;
 // Field names are case-sensitive on purpose, so prose like "Type: public cloud" stays answer text.
 const FIELD = /^(A|type|explain):\s*(.*)$/;
 const OPTION = /^\s*[-*]\s+(\[[xX]\]\s*)?(.*)$/;
-const TYPES = ["basic", "mcq", "tf"];
+const TYPES = ["basic", "mcq", "tf", "enum"];
 
 const text = (lines: string[]) => lines.join("\n").trim();
 
@@ -72,19 +72,20 @@ export function parseDeck(md: string, filename?: string): { deck: Deck; errors: 
     }
 
     type ??= "basic";
-    if (!TYPES.includes(type)) return fail(`unknown type "${type}" (use basic, mcq, or tf)`);
+    if (!TYPES.includes(type)) return fail(`unknown type "${type}" (use basic, mcq, tf, or enum)`);
 
     const common = { id: `c${i + 1}`, type, explain: text(fields.explain) || undefined };
     const a = text(fields.a);
     let raw: unknown;
-    if (type === "mcq") {
-      // Bullets before A:/explain: are the options; everything else there is question text.
-      const options = fields.q.slice(1).flatMap((line) => {
+    if (type === "mcq" || type === "enum") {
+      // Bullets are the mcq options or enum items; everything else before A:/explain: is question text.
+      // An enum may also list its items under A:.
+      const bullets = [...fields.q.slice(1), ...(type === "enum" ? fields.a : [])].flatMap((line) => {
         const m = line.match(OPTION);
         return m ? [{ text: m[2].trim(), correct: Boolean(m[1]) }] : [];
       });
-      const q = [fields.q[0], ...fields.q.slice(1).filter((line) => !OPTION.test(line))];
-      raw = { ...common, q: text(q), options };
+      const q = text([fields.q[0], ...fields.q.slice(1).filter((line) => !OPTION.test(line))]);
+      raw = type === "mcq" ? { ...common, q, options: bullets } : { ...common, q, items: bullets.map((b) => b.text) };
     } else if (type === "tf") {
       raw = { ...common, q: text(fields.q), a: /^true$/i.test(a) ? true : /^false$/i.test(a) ? false : undefined };
     } else {

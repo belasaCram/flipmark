@@ -43,6 +43,8 @@ test("paste a deck, preview, save, study and quiz it", async ({ page }) => {
 
   // Quiz: questions are shuffled, so answer whichever comes up
   await page.getByRole("link", { name: "Take the quiz" }).click();
+  await expect(page.getByLabel("Identification")).toBeChecked();
+  await page.getByRole("button", { name: "Start quiz (2 questions)" }).click();
   for (const n of [1, 2]) {
     await expect(page.getByText(`Question ${n} of 2`)).toBeVisible();
     const typed = page.getByLabel("Type your answer from memory");
