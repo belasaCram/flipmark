@@ -90,6 +90,15 @@ describe("leniency", () => {
     expect(deck.cards[0]).toMatchObject({ a: "Authentication services managed by a third party: SSO, MFA, IGA." });
   });
 
+  it("unwraps a deck that an AI chat returned inside a ```md code fence", () => {
+    const { deck, errors } = parseDeck("```md\r\n" + deckOf("## Q: one\nA: 1", "## Q: bad") + "```\r\n", "f.md");
+    expect(deck.title).toBe("T");
+    expect(deck.cards.map((c) => c.q)).toEqual(["one"]);
+    // Line numbers still count the fence line.
+    expect(errors).toEqual(["Card 2 (line 11): basic needs an A: answer"]);
+    expect(parseDeck("```\n## Q: a\nA: b\n```").deck.cards).toHaveLength(1);
+  });
+
   it("starts a new card at ## Q: even when the --- separator is missing", () => {
     const { deck, errors } = parseDeck("## Q: one\nA: 1\n\n## Q: two\nA: 2\n\n---\n");
     expect(errors).toEqual([]);

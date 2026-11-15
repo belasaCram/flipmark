@@ -12,8 +12,12 @@ const TYPES = ["basic", "mcq", "tf"];
 const text = (lines: string[]) => lines.join("\n").trim();
 
 export function parseDeck(md: string, filename?: string): { deck: Deck; errors: string[] } {
-  const src = md.replace(/\r\n?/g, "\n");
+  let src = md.replace(/\r\n?/g, "\n");
   const errors: string[] = [];
+
+  // AI chat tools often return the whole deck inside a ```md code fence. Unwrap it.
+  const wrapper = src.match(/^\s*(?:`{3,}|~{3,})[a-z]*[ \t]*\n\s*(?=---\n|##\s*Q:)/i)?.[0] ?? "";
+  if (wrapper) src = src.slice(wrapper.length).replace(/\n[ \t]*(?:`{3,}|~{3,})\s*$/, "\n");
 
   let data: Record<string, unknown> = {};
   let content = src;
@@ -24,7 +28,7 @@ export function parseDeck(md: string, filename?: string): { deck: Deck; errors: 
     content = src.replace(/^---\n[\s\S]*?\n---\n?/, "");
   }
   // Frontmatter is stripped from the top only, so the line difference maps content lines back to file lines.
-  const offset = src.split("\n").length - content.split("\n").length;
+  const offset = wrapper.split("\n").length - 1 + src.split("\n").length - content.split("\n").length;
 
   // Split into card blocks: a new block starts after `---` or at a `## Q:` heading (outside code fences).
   const blocks: { line: number; lines: string[] }[] = [];
