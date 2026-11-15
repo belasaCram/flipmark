@@ -2,20 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Deck } from "@/lib/markdown/schema";
-import { activeStreak, useProgress } from "@/lib/progress";
+import { useProgress } from "@/lib/progress";
 import { exportBackup, importBackup } from "@/lib/storage/backup";
 import { deleteDeck, getDecks, saveDecks } from "@/lib/storage/db";
 import { DeckGrid } from "./DeckGrid";
+import { Icon } from "./Icon";
 import { UploadPreview } from "./UploadPreview";
 import { Uploader, type ParseResult } from "./Uploader";
-import { btn, field, muted, plural } from "./ui";
+import { btn, field, muted, panel, plural } from "./ui";
 
 export function Library({ samples, prompt }: { samples: Deck[]; prompt: string }) {
   const [decks, setDecks] = useState<Deck[] | null>(null); // null while IndexedDB loads
   const [failed, setFailed] = useState(false);
   const [pending, setPending] = useState<ParseResult[] | null>(null);
   const [query, setQuery] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState({ text: "", ok: true });
   const importInput = useRef<HTMLInputElement>(null);
   const resetProgress = useProgress((s) => s.reset);
 
@@ -31,7 +32,12 @@ export function Library({ samples, prompt }: { samples: Deck[]; prompt: string }
 
   // Every write goes through here so a storage failure (quota, private mode) is shown, not swallowed.
   const run = (work: () => Promise<string>) =>
-    work().then(setNotice, (e: unknown) => setNotice(e instanceof Error ? e.message : "Something went wrong.")).then(refresh);
+    work()
+      .then(
+        (text) => setNotice({ text, ok: true }),
+        (e: unknown) => setNotice({ text: e instanceof Error ? e.message : "Something went wrong.", ok: false }),
+      )
+      .then(refresh);
 
   const save = (toSave: Deck[]) =>
     run(async () => {
@@ -71,14 +77,13 @@ export function Library({ samples, prompt }: { samples: Deck[]; prompt: string }
   const unusedSamples = samples.filter((s) => !savedIds.has(s.id));
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-8 px-4 py-8">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight">Flipmark</h1>
-          <p className={muted}>Turn Markdown notes into 3D flashcards and quizzes.</p>
-        </div>
-        {decks && <Streak />}
-      </header>
+    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-4 py-10">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">Turn your notes into flashcards</h1>
+        <p className="max-w-xl text-muted">
+          Drop in Markdown, flip through 3D cards, then quiz yourself. Everything stays in your browser.
+        </p>
+      </div>
 
       {pending ? (
         <UploadPreview results={pending} existingIds={savedIds} onSave={save} onCancel={() => setPending(null)} />
@@ -91,13 +96,16 @@ export function Library({ samples, prompt }: { samples: Deck[]; prompt: string }
           <h2 id="decks-heading" className="mr-auto text-xl font-semibold">
             Your decks
           </h2>
-          <button className={btn} onClick={copyPrompt}>
+          <button className={btn} onClick={copyPrompt} title="Copy a prompt that turns your notes into a deck">
+            <Icon name="copy" />
             Copy AI deck prompt
           </button>
           <button className={btn} onClick={exportAll} disabled={!decks?.length}>
+            <Icon name="download" />
             Export all decks
           </button>
           <button className={btn} onClick={() => importInput.current?.click()}>
+            <Icon name="upload" />
             Import backup
           </button>
           <input
@@ -114,59 +122,65 @@ export function Library({ samples, prompt }: { samples: Deck[]; prompt: string }
           />
         </div>
 
-        <p role="status" className="min-h-5 text-sm text-indigo-700 dark:text-indigo-300">
-          {notice}
-        </p>
-
-        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/50 dark:text-amber-200">
-          Decks and progress are stored only in this browser. Clearing site data deletes them, so use{" "}
-          <strong>Export all decks</strong> to keep a backup.
-        </p>
+        <div role="status">
+          {notice.text && (
+            <p
+              className={`flex items-start gap-2 rounded-xl px-4 py-3 text-sm font-medium ${notice.ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}
+            >
+              <Icon name={notice.ok ? "check" : "x"} className="mt-0.5 size-4" />
+              {notice.text}
+            </p>
+          )}
+        </div>
 
         {failed ? (
-          <p role="alert" className="text-red-600 dark:text-red-400">
+          <p role="alert" className={`${panel} text-danger`}>
             Could not open browser storage. Private browsing or blocked site data can cause this.
           </p>
         ) : !decks ? (
-          <p className={muted}>Loading your decks…</p>
+          <div aria-busy="true" aria-label="Loading your decks" className="grid gap-4 sm:grid-cols-2">
+            <div className="h-44 animate-pulse rounded-2xl bg-surface-2" />
+            <div className="h-44 animate-pulse rounded-2xl bg-surface-2" />
+          </div>
         ) : decks.length ? (
           <>
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search decks and cards"
-              aria-label="Search decks and cards"
-              className={field}
-            />
+            <div className="relative">
+              <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search decks and cards"
+                aria-label="Search decks and cards"
+                className={`${field} min-h-11 pl-9`}
+              />
+            </div>
             <DeckGrid decks={decks} query={query} onDelete={remove} />
           </>
         ) : (
-          <p className={muted}>No decks yet. Drop a file or paste markdown above, or start with a sample deck.</p>
+          <div className={`${panel} flex flex-col items-center gap-1 py-10 text-center`}>
+            <p className="text-lg font-medium">No decks yet</p>
+            <p className={muted}>Drop a file or paste markdown above, or start with a sample deck below.</p>
+          </div>
         )}
 
         {decks && unusedSamples.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className={muted}>Sample decks:</span>
+            <span className={muted}>Try a sample:</span>
             {unusedSamples.map((sample) => (
               <button key={sample.id} className={btn} onClick={() => save([sample])}>
-                + {sample.title}
+                <Icon name="plus" />
+                {sample.title}
               </button>
             ))}
           </div>
         )}
+
+        <p className="rounded-xl bg-warn-soft px-4 py-3 text-sm text-warn">
+          Decks and progress are stored only in this browser. Clearing site data deletes them, so use{" "}
+          <strong>Export all decks</strong> to keep a backup.
+        </p>
       </section>
     </main>
-  );
-}
-
-// Mounted only after the decks load, so the date-based streak is never computed during prerender.
-function Streak() {
-  const streak = useProgress(activeStreak);
-  if (!streak) return null;
-  return (
-    <p className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200">
-      🔥 {plural(streak, "day")} streak
-    </p>
   );
 }

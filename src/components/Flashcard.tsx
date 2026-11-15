@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, useSpring } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 
 type Props = { front: string; back: string; onPrev?: () => void; onNext?: () => void };
@@ -34,8 +35,11 @@ export function Flashcard({ front, back, onPrev, onNext }: Props) {
   }, [onPrev, onNext]);
 
   return (
-    <div
+    <motion.div
       className="w-full max-w-xl perspective-[1200px]"
+      initial={reduce ? false : { opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2 }}
       onPointerMove={(e) => {
         if (reduce || e.pointerType !== "mouse") return;
         const r = e.currentTarget.getBoundingClientRect();
@@ -50,7 +54,7 @@ export function Flashcard({ front, back, onPrev, onNext }: Props) {
       <motion.div
         role="button"
         tabIndex={0}
-        className="h-80 cursor-pointer touch-pan-y rounded-2xl outline-none transform-3d focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-4 focus-visible:ring-offset-background sm:h-96"
+        className="h-80 cursor-pointer touch-pan-y rounded-2xl outline-none transform-3d focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-bg sm:h-96"
         style={{ rotateX: tiltX, rotateY: tiltY }}
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
@@ -82,7 +86,7 @@ export function Flashcard({ front, back, onPrev, onNext }: Props) {
       <p className="sr-only" aria-live="polite">
         {flipped ? `Answer: ${back}` : ""}
       </p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -92,9 +96,15 @@ function Face(props: { label: string; children: string; hidden: boolean; fade: b
   return (
     <div
       aria-hidden={props.hidden}
-      className={`absolute inset-0 flex flex-col overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 shadow-lg transition-opacity duration-200 backface-hidden dark:border-zinc-800 dark:bg-zinc-900 ${side} ${props.hidden ? "pointer-events-none" : ""}`}
+      className={`absolute inset-0 flex flex-col overflow-y-auto rounded-2xl border p-6 shadow-xl shadow-primary/10 transition-opacity duration-200 backface-hidden ${props.back ? "border-primary/40 bg-primary-soft" : "border-border bg-surface"} ${side} ${props.hidden ? "pointer-events-none" : ""}`}
     >
-      <span className="text-xs font-medium tracking-widest text-zinc-500 uppercase">{props.label}</span>
+      <div className="flex items-center justify-between text-xs font-semibold tracking-widest text-muted uppercase">
+        <span className={props.back ? "text-primary" : ""}>{props.label}</span>
+        <span className="flex items-center gap-1 font-medium tracking-normal normal-case">
+          <Icon name="flip" className="size-3.5" />
+          Flip
+        </span>
+      </div>
       <div className="my-auto py-2 text-center text-lg">
         <Markdown>{props.children}</Markdown>
       </div>

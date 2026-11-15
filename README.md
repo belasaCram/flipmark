@@ -9,7 +9,7 @@ Turn Markdown notes into 3D flip flashcards and quizzes. Everything runs in your
 - **Quiz mode**: multiple choice and true/false with instant feedback, typed answers for basic cards, and a final score.
 - **Search** across deck titles, subjects and the text of every card.
 - **Export all decks / Import backup** as a JSON file, including your progress.
-- A daily study streak, dark mode (follows your system setting) and reduced-motion support.
+- A daily study streak, light and dark themes (follows your system setting, with a toggle in the header) and reduced-motion support.
 
 > **Your data stays on your device.** Decks are saved in IndexedDB and progress in `localStorage`. Clearing site data deletes them, so use **Export all decks** to keep a backup.
 
@@ -20,6 +20,8 @@ Turn Markdown notes into 3D flip flashcards and quizzes. Everything runs in your
 | Flip the card | Click or tap         | Space, or Enter |
 | Next card     | Swipe left, or Skip  | Right arrow     |
 | Previous card | Swipe right          | Left arrow      |
+| Review again / Got it | Buttons      | 1 / 2           |
+| Pick a quiz option    | Click or tap | 1 to 4          |
 
 ## Deck format
 

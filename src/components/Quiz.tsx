@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useHotkeys } from "@/lib/hooks";
 import type { Card, Deck } from "@/lib/markdown/schema";
 import { useProgress } from "@/lib/progress";
 import { shuffle } from "@/lib/shuffle";
 import { DeckPage } from "./DeckPage";
+import { Icon } from "./Icon";
 import { Markdown } from "./Markdown";
 import { ProgressBar } from "./ProgressBar";
-import { btn, btnPrimary, field, muted, panel } from "./ui";
+import { btn, btnPrimary, field, kbd, muted, panel } from "./ui";
 
 export function Quiz() {
   const [attempt, setAttempt] = useState(0);
@@ -35,14 +37,28 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
   const best = useProgress((s) => s.decks[deck.id]?.quiz?.best);
 
   const total = cards.length;
-  const card = cards[i];
+  const card: Card | undefined = cards[i];
+  const options = card?.type === "mcq" ? card.options.map((o) => o.text) : card?.type === "tf" ? ["True", "False"] : [];
+
+  // Number keys pick an option while the question is unanswered.
+  useHotkeys(Object.fromEntries(options.map((option, n) => [String(n + 1), result === null ? () => pick(option) : undefined])));
+
+  const grade = (ok: boolean) => {
+    setResult(ok);
+    if (ok) setScore((n) => n + 1);
+  };
+  function pick(answer: string) {
+    if (!card) return;
+    setPicked(answer);
+    grade(answer === correctAnswer(card));
+  }
 
   if (!card) {
     const percent = total ? Math.round((score / total) * 100) : 0;
     return (
-      <section className={`${panel} flex flex-col items-center gap-4 text-center`} aria-live="polite">
-        <h2 className="text-xl font-semibold">Quiz complete</h2>
-        <p className="text-5xl font-semibold">
+      <section className={`${panel} flex flex-col items-center gap-4 py-10 text-center`} aria-live="polite">
+        <h2 className="text-2xl font-semibold">{percent >= 80 ? "Great work!" : percent >= 50 ? "Getting there" : "Keep practicing"}</h2>
+        <p className="text-6xl font-semibold tracking-tight text-primary tabular-nums">
           {score} / {total}
         </p>
         <p className={muted}>
@@ -60,14 +76,6 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
     );
   }
 
-  const grade = (ok: boolean) => {
-    setResult(ok);
-    if (ok) setScore((n) => n + 1);
-  };
-  const pick = (answer: string) => {
-    setPicked(answer);
-    grade(answer === correctAnswer(card));
-  };
   const next = () => {
     if (i === total - 1) saveQuiz(deck.id, score, total);
     setI(i + 1);
@@ -76,26 +84,25 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
     setTyped("");
   };
 
-  const options = card.type === "mcq" ? card.options.map((o) => o.text) : card.type === "tf" ? ["True", "False"] : [];
   const optionStyle = (option: string) =>
     result === null
       ? ""
       : option === correctAnswer(card)
-        ? "border-green-600 bg-green-50 dark:bg-green-950/50"
+        ? "border-success bg-success-soft text-success"
         : option === picked
-          ? "border-red-600 bg-red-50 dark:bg-red-950/50"
-          : "opacity-60";
+          ? "border-danger bg-danger-soft text-danger"
+          : "opacity-50";
 
   return (
     <section className="flex flex-col gap-5">
       <div className="flex items-center gap-3">
         <ProgressBar value={i} max={total} label="Questions answered" />
-        <span className={`${muted} shrink-0`}>
+        <span className={`${muted} shrink-0 tabular-nums`}>
           Question {i + 1} of {total}
         </span>
       </div>
 
-      <div className={`${panel} text-lg`}>
+      <div className={`${panel} py-7 text-xl font-medium`}>
         <Markdown>{card.q}</Markdown>
       </div>
 
@@ -123,14 +130,20 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
         </form>
       ) : (
         <div className="flex flex-col gap-2">
-          {options.map((option) => (
+          {options.map((option, n) => (
             <button
               key={option}
               disabled={result !== null}
               onClick={() => pick(option)}
-              className={`${btn} justify-start rounded-xl px-4 py-3 text-left text-base disabled:opacity-100 ${optionStyle(option)}`}
+              className={`${btn} min-h-14 justify-start gap-3 px-4 py-3 text-left text-base disabled:opacity-100 ${optionStyle(option)}`}
             >
-              {option}
+              <kbd aria-hidden="true" className={kbd}>
+                {n + 1}
+              </kbd>
+              <span className="flex-1">{option}</span>
+              {/* An icon as well as colour, so the result does not rely on colour alone. */}
+              {result !== null && option === correctAnswer(card) && <Icon name="check" className="size-5" />}
+              {result !== null && option === picked && option !== correctAnswer(card) && <Icon name="x" className="size-5" />}
             </button>
           ))}
         </div>
@@ -142,7 +155,8 @@ function QuizRun({ deck, onRetry }: { deck: Deck; onRetry: () => void }) {
             {result === "self" ? (
               <p className="font-semibold">Compare with the answer:</p>
             ) : (
-              <p className={`font-semibold ${result ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+              <p className={`flex items-center gap-2 font-semibold ${result ? "text-success" : "text-danger"}`}>
+                <Icon name={result ? "check" : "x"} className="size-5" />
                 {result ? "Correct!" : "Not quite."}
               </p>
             )}

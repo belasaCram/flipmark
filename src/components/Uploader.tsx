@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { parseDeck } from "@/lib/markdown/parse";
 import type { Deck } from "@/lib/markdown/schema";
-import { btn, field, muted } from "./ui";
+import { Icon } from "./Icon";
+import { btn, field, muted, panel } from "./ui";
 
 export type ParseResult = { name: string; deck: Deck; errors: string[] };
 
@@ -33,8 +34,8 @@ export function Uploader({ onParsed }: { onParsed: (results: ParseResult[]) => v
           setOver(false);
           void readFiles(e.dataTransfer.files);
         }}
-        className={`flex min-h-44 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition-colors focus-within:border-indigo-500 ${
-          over ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40" : "border-zinc-300 dark:border-zinc-700"
+        className={`group flex min-h-52 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-colors focus-within:border-primary hover:border-primary hover:bg-primary-soft/50 ${
+          over ? "border-primary bg-primary-soft" : "border-border bg-surface"
         }`}
       >
         <input
@@ -47,19 +48,22 @@ export function Uploader({ onParsed }: { onParsed: (results: ParseResult[]) => v
             e.target.value = ""; // so the same file can be picked again
           }}
         />
+        <span className="grid size-12 place-items-center rounded-full bg-primary-soft text-primary transition-transform group-hover:-translate-y-0.5">
+          <Icon name="upload" className="size-6" />
+        </span>
         <span className="text-lg font-medium">
-          Drop <code>.md</code> files here or <span className="underline">browse</span>
+          Drop <code className="font-mono text-base">.md</code> files here or <span className="text-primary underline underline-offset-4">browse</span>
         </span>
         <span className={muted}>One file is one deck. Files are read in your browser and never uploaded.</span>
         {error && (
-          <span role="alert" className="text-sm text-red-600 dark:text-red-400">
+          <span role="alert" className="text-sm font-medium text-danger">
             {error}
           </span>
         )}
       </label>
 
       <form
-        className="flex flex-col gap-2"
+        className={`${panel} flex flex-col gap-3`}
         onSubmit={(e) => {
           e.preventDefault();
           onParsed([{ name: "Pasted markdown", ...parseDeck(text) }]);
@@ -73,7 +77,7 @@ export function Uploader({ onParsed }: { onParsed: (results: ParseResult[]) => v
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder={"---\ntitle: My deck\n---\n\n## Q: Question?\nA: Answer."}
-          className={`${field} min-h-28 flex-1 font-mono`}
+          className={`${field} min-h-28 flex-1 resize-none font-mono`}
         />
         <button className={`${btn} self-start`} disabled={!text.trim()}>
           Preview deck
